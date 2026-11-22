@@ -1,0 +1,18 @@
+{
+  "name": "coffeebean-kakao-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/compile.mjs",
+    "start": "node server.mjs",
+    "test": "node scripts/compile.mjs && node tests/v2.mjs && node tests/phone.mjs && node tests/pairing.mjs && node tests/devices.mjs && node tests/persistence.mjs && node tests/community.mjs && node tests/hostadmin.mjs && node tests/copilot.mjs && node tests/personas.mjs && node tests/hosted.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "qr": "node scripts/qr.mjs",
+    "validate": "node scripts/validate-artifact.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0",
+    "qrcode": "^1.5.4"
+  }
+}

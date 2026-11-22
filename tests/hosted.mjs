@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
+import worker from '../dist/server/index.js';
+const db=new DatabaseSync(':memory:');db.exec(fs.readFileSync('drizzle/0000_sessions.sql','utf8'));
+const DB={prepare:sql=>({bind:(...args)=>({first:async()=>db.prepare(sql).get(...args),run:async()=>({meta:{changes:db.prepare(sql).run(...args).changes}})})})};
+const call=(url,method='GET',body,key)=>worker.fetch(new Request('https://demo.example'+url,{method,headers:{...(key?{Authorization:'Bearer '+key}:{})},...(body?{body:JSON.stringify(body)}:{})}),{DB});
+const info=await (await call('/api/pair-info')).json();assert.deepEqual(info.origins,['https://demo.example']);
+const p=await (await call('/api/pair','POST')).json();assert.ok(p.userToken);const route='/api/pair/'+p.id;
+assert.equal((await call(route)).status,403);const initial=await (await call(route,'GET',null,p.userToken)).json();assert.equal(initial.revision,0);
+const person=JSON.parse(fs.readFileSync('data/mentors.json','utf8'))[0];const r={id:'demo',mentorId:person.id,mentorName:person.name,applicantName:'Demo',profile:{role:'Marketing'},questions:[],transcript:[],consent:{user:false,mentor:false},createdAt:new Date().toISOString(),status:'pending',schedulingMode:'instant-demo',method:person.methods[0]};
+assert.equal((await call(route,'PUT',{revision:0,request:r,userZone:'Asia/Seoul'},p.userToken)).status,200);
+assert.equal((await call(route,'PUT',{revision:1,request:{...r,status:'live'},mentorZone:'America/New_York',overrides:{}},p.mentorToken)).status,200);
+const live=await (await call(route,'GET',null,p.userToken)).json();assert.equal(live.request.status,'live');assert.equal(live.revision,2);
+assert.equal((await call(route,'PUT',{revision:1,request:r,userZone:'Asia/Seoul'},p.userToken)).status,409);
+assert.equal((await call(route,'DELETE',null,p.userToken)).status,200);assert.equal((await call(route,'GET',null,p.userToken)).status,404);
+console.log('PASS hosted database: authenticated persistent sessions, immediate acceptance, conflict detection, revocation.');

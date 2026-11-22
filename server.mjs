@@ -1,0 +1,11 @@
+import http from 'node:http';
+import worker from './worker/index.js';
+import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {networkOrigins} from './network.mjs';
+import {createPairingService} from './pairing.mjs';
+if(fs.existsSync('.env.local'))process.loadEnvFile('.env.local');
+const port=Number(process.env.PORT||4173);
+const origins=()=>networkOrigins(port);
+const pair=createPairingService(origins,{storagePath:fileURLToPath(new URL('./.local-data/pairing.json',import.meta.url)),generateTopic:async topic=>(await worker.fetch(new Request('http://localhost/api/community-topic',{method:'POST',body:JSON.stringify({topic,consent:true})}),process.env)).json()});
+http.createServer(async(req,res)=>{try{const parts=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>1500000){res.writeHead(413);res.end('Request too large');return}parts.push(chunk)}const request=new Request(`http://${req.headers.host||'localhost:'+port}${req.url}`,{method:req.method,headers:req.headers,...(!['GET','HEAD'].includes(req.method)?{body:Buffer.concat(parts)}:{})});const response=await pair(request)||await worker.fetch(request,process.env);res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()))}catch{res.writeHead(500);res.end('Server error')}}).listen(port,process.env.HOST||'0.0.0.0',()=>{console.log(`Local: http://localhost:${port}`);for(const url of origins())console.log(`Same Wi-Fi: ${url}`)});

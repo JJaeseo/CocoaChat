@@ -1,0 +1,14 @@
+dist/
+site.tar.gz
+.env
+.env.*
+!.env.example
+node_modules/
+.local-data/
+.wrangler/
+outputs/coffeebean-qr.png
+outputs/public-url.txt
+
+/.openai/
+/worker/index.js
+/outputs/coffeebean-demo.html

@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "coffeebean-kakao-demo",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "vars": { "OPENAI_MODEL": "gpt-4.1-mini" }
+}

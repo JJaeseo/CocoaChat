@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import worker from '../worker/index.js';
+const get=async p=>(await worker.fetch(new Request('https://demo.local'+p))).text();
+const mentors=JSON.parse(await get('/api/mentors'));
+for(const mentor of mentors)mentor.photo='data:image/svg+xml;base64,'+Buffer.from(await get(mentor.photo)).toString('base64');
+const handler=('const POLISH_PROMPT='+JSON.stringify(fs.readFileSync('prompts/polish.txt','utf8'))+';\n'+fs.readFileSync('worker/onboarding.js','utf8')+'\n'+fs.readFileSync('worker/summary.js','utf8')+'\n'+fs.readFileSync('worker/community.js','utf8')+'\n'+fs.readFileSync('worker/api.js','utf8')).replace('export function makeHandler','function makeHandler');
+const bootstrap=`const offlineWorker=(()=>{${handler}\nreturn makeHandler({},${JSON.stringify(mentors)},'');})();const nativeFetch=window.fetch.bind(window);window.fetch=(url,options)=>String(url).startsWith('/api/')?offlineWorker.fetch(new Request('https://offline.demo'+url,options),{}):nativeFetch(url,options);window.COFFEEBEAN_OFFLINE=true;\n`;
+const css=(await get('/style.css')).replace(/@import url\([^;]+;/,'');
+const js=fs.readFileSync('public/main.js','utf8')+'\n'+fs.readFileSync('public/phone.js','utf8')+'\n'+fs.readFileSync('public/community.js','utf8')+'\n'+fs.readFileSync('public/roomlist.js','utf8')+'\n'+fs.readFileSync('public/friends.js','utf8')+'\n'+fs.readFileSync('public/businesschat.js','utf8');
+const html=`<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>코코아챗 · 바로 시연하기</title><style>${css}</style></head><body><div id="app"></div><div id="toast" role="status"></div><script>${(bootstrap+js.replaceAll('/icons/kakao-talk.svg','data:image/svg+xml;base64,'+Buffer.from(fs.readFileSync('public/icons/kakao-talk.svg')).toString('base64'))).replace(/<\/script/gi,'<\\/script')}</script></body></html>`;
+fs.mkdirSync('outputs',{recursive:true});fs.writeFileSync('outputs/coffeebean-demo.html',html);console.log('Created standalone demo: outputs/coffeebean-demo.html');

@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import QRCode from 'qrcode';
+const value=process.argv[2];
+if(!value)throw Error('Usage: npm run qr -- https://YOUR-PUBLISHED-URL');
+const url=new URL(value);
+if(url.protocol!=='https:'||['localhost','127.0.0.1'].includes(url.hostname))throw Error('Use the public HTTPS address after deployment.');
+const response=await fetch(url,{signal:AbortSignal.timeout(15000)});
+if(!response.ok)throw Error('Published site could not be reached: '+response.status);
+fs.mkdirSync('outputs',{recursive:true});
+await QRCode.toFile('outputs/coffeebean-qr.png',url.href,{width:1200,margin:4,errorCorrectionLevel:'M'});
+fs.writeFileSync('outputs/public-url.txt',url.href+'\n');
+console.log('Created outputs/coffeebean-qr.png for '+url.href);

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import worker from '../worker/index.js';
+const req=body=>new Request('http://test/api/assistant',{method:'POST',body:JSON.stringify({task:'copilot',operation:'assist',...body})});
+let sent;globalThis.fetch=async(_url,options)=>{sent=JSON.parse(options.body);return Response.json({output:[{content:[{type:'output_text',text:JSON.stringify({text:'급여와 일과 삶의 균형을 함께 고려했을 때, 현재 직장의 근무 만족도는 어떠신가요?'})}]}]})};
+const body={draft:'월급과 워라밸을 비교했을 때 일하기 좋은지 정중한 어조로 써줘',currentDraft:'draft',transcript:[{role:'mentor',text:'private detail'}],consent:{user:true,mentor:false}};
+let r=await worker.fetch(req(body),{OPENAI_API_KEY:'test-placeholder'});assert.equal(r.status,200);assert.ok((await r.json()).text);assert.ok(!sent.input[0].content.includes('private detail'));assert.ok(sent.input[0].content.includes(body.draft));assert.ok(sent.instructions.includes('finished deliverable'));assert.ok(sent.instructions.includes('not a paraphrase'));
+r=await worker.fetch(req({...body,consent:{user:true,mentor:true}}),{OPENAI_API_KEY:'test-placeholder'});assert.equal(r.status,200);assert.ok(sent.input[0].content.includes('private detail'));
+assert.equal((await worker.fetch(req({draft:''}),{OPENAI_API_KEY:'test-placeholder'})).status,400);
+assert.equal((await worker.fetch(req(body),{})).status,503);
+const ui=fs.readFileSync('public/main.js','utf8');const panel=ui.slice(ui.indexOf('function copilot(){'),ui.indexOf('function rooms(){'));assert.ok(!panel.includes('<select'));assert.ok(panel.includes('copilot-request'));
+console.log('PASS: natural-language copilot, consent filtering, empty input, no-key error, no mode selector.');
